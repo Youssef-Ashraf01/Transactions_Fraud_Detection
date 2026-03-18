@@ -1,0 +1,35 @@
+{
+    "name": "NexGen Fraud Guard Dev",
+
+    "build": {
+        "dockerfile": "Dockerfile",
+        "context": ".."
+    },
+
+    "workspaceFolder": "/workspace",
+
+    "mounts": [
+        "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
+    ],
+
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python",
+                "ms-python.pylance",
+                "ms-toolsai.jupyter",
+                "redhat.vscode-yaml",
+                "ms-azuretools.vscode-docker"
+            ],
+            "settings": {
+                "python.defaultInterpreterPath": "/usr/bin/python3",
+                "editor.formatOnSave": true,
+                "editor.defaultFormatter": "ms-python.black-formatter"
+            }
+        }
+    },
+
+    "postCreateCommand": "echo '✅ Container ready' && python3 --version && java -version",
+
+    "remoteUser": "root"
+}
