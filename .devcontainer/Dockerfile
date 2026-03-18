@@ -40,6 +40,12 @@ RUN pip install \
     black==23.12.0
 
 # ── Working directory ─────────────────────────────────────────
+# Git identity — persists across container rebuilds
+RUN git config --global user.email "youssefashraf932@gmail.com" && \
+    git config --global user.name "Youssef-Ashraf01" && \
+    git config --global credential.helper store && \
+    git config --global init.defaultBranch main
+
 WORKDIR /workspace
 
 # ── Verify everything on build ────────────────────────────────
