@@ -1,0 +1,218 @@
+
+networks:
+  nexgen-local:
+    driver: bridge
+
+volumes:
+  kafka-data:
+  minio-data:
+  redis-data:
+  nessie-data:
+
+services:
+
+  # ────────────────────────────────────────────────────────────
+  # KAFKA — KRaft mode (no Zookeeper needed)
+  # ────────────────────────────────────────────────────────────
+  kafka:
+    image: confluentinc/cp-kafka:7.8.0
+    container_name: nexgen-kafka
+    networks:
+      - nexgen-local
+    ports:
+      - "9092:9092"   # External access (from host / container)
+      - "9093:9093"   # KRaft controller port
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    environment:
+      # ── KRaft settings ──────────────────────────────────────
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+
+      # ── Listeners ───────────────────────────────────────────
+      # INTERNAL  → used by other containers (kafka:29092)
+      # EXTERNAL  → used by host machine     (localhost:9092)
+      # CONTROLLER→ used by KRaft consensus  (kafka:9093)
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://host.docker.internal:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+
+      # ── Cluster identity ─────────────────────────────────────
+      CLUSTER_ID: "nexgen-kafka-cluster-001"
+
+      # ── Performance & reliability settings ───────────────────
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_COMPRESSION_TYPE: snappy
+      KAFKA_NUM_PARTITIONS: 1
+
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  # ────────────────────────────────────────────────────────────
+  # KAFKA SETUP — creates all 5 topics after Kafka is healthy
+  # ────────────────────────────────────────────────────────────
+  kafka-setup:
+    image: confluentinc/cp-kafka:7.8.0
+    container_name: nexgen-kafka-setup
+    networks:
+      - nexgen-local
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        echo "Creating Kafka topics..."
+
+        kafka-topics --create --if-not-exists \
+          --bootstrap-server kafka:29092 \
+          --topic transactions-raw \
+          --partitions 6 \
+          --replication-factor 1 \
+          --config retention.ms=604800000 \
+          --config compression.type=snappy
+
+        kafka-topics --create --if-not-exists \
+          --bootstrap-server kafka:29092 \
+          --topic transactions-scored \
+          --partitions 6 \
+          --replication-factor 1 \
+          --config retention.ms=259200000
+
+        kafka-topics --create --if-not-exists \
+          --bootstrap-server kafka:29092 \
+          --topic fraud-alerts-high-priority \
+          --partitions 3 \
+          --replication-factor 1 \
+          --config retention.ms=2592000000
+
+        kafka-topics --create --if-not-exists \
+          --bootstrap-server kafka:29092 \
+          --topic transactions-dlq \
+          --partitions 3 \
+          --replication-factor 1 \
+          --config retention.ms=1209600000
+
+        kafka-topics --create --if-not-exists \
+          --bootstrap-server kafka:29092 \
+          --topic risk-profile-updates \
+          --partitions 3 \
+          --replication-factor 1 \
+          --config retention.ms=172800000
+
+        echo ""
+        echo "Topics created successfully:"
+        kafka-topics --list --bootstrap-server kafka:29092
+        echo ""
+        echo "Done."
+    restart: on-failure
+
+  # ────────────────────────────────────────────────────────────
+  # MINIO — Object storage (local S3 / lakehouse)
+  # ────────────────────────────────────────────────────────────
+  minio:
+    image: minio/minio:latest
+    container_name: nexgen-minio
+    networks:
+      - nexgen-local
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    environment:
+      MINIO_ROOT_USER: nexgen-admin
+      MINIO_ROOT_PASSWORD: nexgen-secret-2026
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ────────────────────────────────────────────────────────────
+  # MINIO SETUP — creates buckets after MinIO is healthy
+  # ────────────────────────────────────────────────────────────
+  minio-setup:
+    image: minio/mc:latest
+    container_name: nexgen-minio-setup
+    networks:
+      - nexgen-local
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "Configuring MinIO..."
+        mc alias set local http://minio:9000 nexgen-admin nexgen-secret-2026
+
+        mc mb local/nexgen-lakehouse   --ignore-existing
+        mc mb local/nexgen-checkpoints --ignore-existing
+        mc mb local/nexgen-logs        --ignore-existing
+
+        mc put /dev/null local/nexgen-lakehouse/bronze/.keep
+        mc put /dev/null local/nexgen-lakehouse/silver/.keep
+        mc put /dev/null local/nexgen-lakehouse/gold/.keep
+
+        echo "Buckets ready:"
+        mc ls local/
+    restart: on-failure
+
+  # ────────────────────────────────────────────────────────────
+  # REDIS — Hot layer
+  # ────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7.2-alpine
+    container_name: nexgen-redis
+    networks:
+      - nexgen-local
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ────────────────────────────────────────────────────────────
+  # NESSIE — Iceberg catalog
+  # ────────────────────────────────────────────────────────────
+  nessie:
+    image: projectnessie/nessie:0.76.0
+    container_name: nexgen-nessie
+    networks:
+      - nexgen-local
+    ports:
+      - "19120:19120"
+    volumes:
+      - nessie-data:/nessie/data
+    environment:
+      QUARKUS_DATASOURCE_DB_KIND: rocksdb
+      NESSIE_VERSION_STORE_TYPE: ROCKSDB
+      NESSIE_ROCKSDB_PATH: /nessie/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:19120/api/v1/config"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 20s

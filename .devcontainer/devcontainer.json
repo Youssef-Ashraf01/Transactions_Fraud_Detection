@@ -12,6 +12,10 @@
         "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
     ],
 
+    "runArgs": [
+        "--add-host=host.docker.internal:host-gateway"
+    ],
+
     "customizations": {
         "vscode": {
             "extensions": [
@@ -23,8 +27,7 @@
             ],
             "settings": {
                 "python.defaultInterpreterPath": "/usr/bin/python3",
-                "editor.formatOnSave": true,
-                "editor.defaultFormatter": "ms-python.black-formatter"
+                "editor.formatOnSave": true
             }
         }
     },
