@@ -1,0 +1,49 @@
+# ── kafka namespace ───────────────────────────────────────────
+# Strimzi operator + Kafka cluster + topics + Kafka UI
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kafka
+  labels:
+    app.kubernetes.io/managed-by: nexgen
+    environment: local
+---
+# ── storage namespace ─────────────────────────────────────────
+# MinIO object storage + Nessie Iceberg catalog
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: storage
+  labels:
+    app.kubernetes.io/managed-by: nexgen
+    environment: local
+---
+# ── fraud-app namespace ───────────────────────────────────────
+# Redis hot layer + RedisInsight
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: fraud-app
+  labels:
+    app.kubernetes.io/managed-by: nexgen
+    environment: local
+---
+# ── spark namespace ───────────────────────────────────────────
+# Spark Operator + SparkApplication jobs
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: spark
+  labels:
+    app.kubernetes.io/managed-by: nexgen
+    environment: local
+---
+# ── monitoring namespace ──────────────────────────────────────
+# Prometheus + Grafana + Spark History Server
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    app.kubernetes.io/managed-by: nexgen
+    environment: local
