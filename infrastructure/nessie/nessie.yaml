@@ -34,6 +34,8 @@ spec:
             - name: NESSIE_SERVER_AUTHENTICATION_ENABLED
               value: "false"
             # ── Disable OIDC tenant entirely ──────────────────
+            - name: QUARKUS_OTEL_ENABLED
+              value: "false"
             - name: QUARKUS_OIDC_TENANT_ENABLED
               value: "false"
           resources:
