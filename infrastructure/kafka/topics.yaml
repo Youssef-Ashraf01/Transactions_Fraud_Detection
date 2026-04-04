@@ -1,0 +1,70 @@
+# ── transactions-raw ──────────────────────────────────────────
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: transactions-raw
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: nexgen-kafka
+spec:
+  partitions: 6
+  replicas: 1
+  config:
+    retention.ms: "604800000"
+    compression.type: snappy
+---
+# ── transactions-scored ───────────────────────────────────────
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: transactions-scored
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: nexgen-kafka
+spec:
+  partitions: 6
+  replicas: 1
+  config:
+    retention.ms: "259200000"
+---
+# ── fraud-alerts-high-priority ────────────────────────────────
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: fraud-alerts-high-priority
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: nexgen-kafka
+spec:
+  partitions: 3
+  replicas: 1
+  config:
+    retention.ms: "2592000000"
+---
+# ── transactions-dlq ──────────────────────────────────────────
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: transactions-dlq
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: nexgen-kafka
+spec:
+  partitions: 3
+  replicas: 1
+  config:
+    retention.ms: "1209600000"
+---
+# ── risk-profile-updates ──────────────────────────────────────
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: risk-profile-updates
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: nexgen-kafka
+spec:
+  partitions: 3
+  replicas: 1
+  config:
+    retention.ms: "172800000"
