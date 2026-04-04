@@ -1,0 +1,66 @@
+# ── KafkaNodePool — defines the broker/controller nodes ──────
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaNodePool
+metadata:
+  name: combined
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: nexgen-kafka
+spec:
+  replicas: 1
+  roles:
+    - controller
+    - broker
+  storage:
+    type: persistent-claim
+    size: 5Gi
+    deleteClaim: false
+  resources:
+    requests:
+      memory: 1Gi
+      cpu: "500m"
+    limits:
+      memory: 2Gi
+      cpu: "1000m"
+---
+# ── Kafka Cluster — KRaft mode ────────────────────────────────
+apiVersion: kafka.strimzi.io/v1beta2
+kind: Kafka
+metadata:
+  name: nexgen-kafka
+  namespace: kafka
+  annotations:
+    # These two annotations explicitly enable KRaft mode
+    strimzi.io/node-pools: enabled
+    strimzi.io/kraft: enabled
+spec:
+  kafka:
+    version: 3.6.0
+    metadataVersion: 3.6-IV2
+
+    # ── Listeners ─────────────────────────────────────────────
+    listeners:
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+      - name: external
+        port: 9094
+        type: nodeport
+        tls: false
+
+    # ── Broker configuration ──────────────────────────────────
+    config:
+      offsets.topic.replication.factor: 1
+      transaction.state.log.replication.factor: 1
+      transaction.state.log.min.isr: 1
+      default.replication.factor: 1
+      min.insync.replicas: 1
+      log.retention.hours: 168
+      compression.type: snappy
+      auto.create.topics.enable: "false"
+
+  # ── Entity Operator (manages topics & users) ──────────────
+  entityOperator:
+    topicOperator: {}
+    userOperator: {}
