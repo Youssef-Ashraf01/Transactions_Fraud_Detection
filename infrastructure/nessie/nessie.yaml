@@ -26,18 +26,20 @@ spec:
               value: ROCKSDB
             - name: NESSIE_ROCKSDB_PATH
               value: /nessie/data
-            # ── Disable OIDC authentication ───────────────────
-            # Nessie 0.76 enables OIDC by default and crashes
-            # trying to reach a Keycloak server that doesn't exist
+            # ── Disable OIDC ──────────────────────────────────
             - name: QUARKUS_OIDC_ENABLED
               value: "false"
             - name: NESSIE_SERVER_AUTHENTICATION_ENABLED
               value: "false"
-            # ── Disable OIDC tenant entirely ──────────────────
-            - name: QUARKUS_OTEL_ENABLED
-              value: "false"
             - name: QUARKUS_OIDC_TENANT_ENABLED
               value: "false"
+            # ── Disable OpenTelemetry tracing ─────────────────
+            - name: QUARKUS_OPENTELEMETRY_ENABLED
+              value: "false"
+            - name: QUARKUS_OPENTELEMETRY_TRACER_ENABLED
+              value: "false"
+            - name: QUARKUS_OTEL_SDK_DISABLED
+              value: "true"
           resources:
             requests:
               memory: 256Mi
