@@ -1,0 +1,38 @@
+# ── Architecture ──────────────────────────────────────────────
+# standalone = single master, no replicas
+# saves memory in local dev — production would use replication
+architecture: standalone
+
+# ── Authentication ────────────────────────────────────────────
+auth:
+  enabled: true
+  password: "redis-secret-2026"
+
+# ── Master configuration ──────────────────────────────────────
+master:
+  persistence:
+    enabled: true
+    size: 2Gi
+
+  resources:
+    requests:
+      memory: 128Mi
+      cpu: 100m
+    limits:
+      memory: 256Mi
+      cpu: 250m
+
+  # Redis configuration
+  configuration: |
+    appendonly yes
+    appendfsync everysec
+    maxmemory 200mb
+    maxmemory-policy allkeys-lru
+
+# ── Disable replica (standalone mode) ────────────────────────
+replica:
+  replicaCount: 0
+
+# ── Disable cluster mode ──────────────────────────────────────
+cluster:
+  enabled: false
