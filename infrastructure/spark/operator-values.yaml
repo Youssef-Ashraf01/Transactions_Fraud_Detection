@@ -1,9 +1,18 @@
+# Spark Operator configuration
+# jobNamespaces controls which namespaces the operator watches for SparkApplications
 jobNamespaces:
   - spark
 
+# Webhook validates SparkApplication resources
 webhook:
   enable: true
 
+# Controller specific settings
+controller:
+  # Number of worker threads
+  workers: 10
+
+# Resource limits for the operator pod
 resources:
   requests:
     memory: 256Mi
