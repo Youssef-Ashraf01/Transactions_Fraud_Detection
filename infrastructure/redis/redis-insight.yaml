@@ -27,12 +27,6 @@ spec:
             limits:
               memory: 256Mi
               cpu: 250m
-          livenessProbe:
-            httpGet:
-              path: /api/health/
-              port: 5540
-            initialDelaySeconds: 30
-            periodSeconds: 15
 ---
 apiVersion: v1
 kind: Service
@@ -48,4 +42,5 @@ spec:
     - name: http
       port: 5540
       targetPort: 5540
-  type: ClusterIP
+      nodePort: 30054
+  type: NodePort
