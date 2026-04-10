@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spark-history-server
+  namespace: monitoring
+  labels:
+    app: spark-history-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: spark-history-server
+  template:
+    metadata:
+      labels:
+        app: spark-history-server
+    spec:
+      containers:
+        - name: spark-history-server
+          image: apache/spark:3.5.0
+          command:
+            - /opt/spark/bin/spark-class
+            - org.apache.spark.deploy.history.HistoryServer
+          ports:
+            - containerPort: 18080
+          env:
+            - name: SPARK_HISTORY_OPTS
+              value: >-
+                -Dspark.history.fs.logDirectory=s3a://nexgen-logs/spark-events
+                -Dspark.hadoop.fs.s3a.endpoint=http://minio.storage.svc.cluster.local:9000
+                -Dspark.hadoop.fs.s3a.access.key=nexgen-admin
+                -Dspark.hadoop.fs.s3a.secret.key=nexgen-secret-2026
+                -Dspark.hadoop.fs.s3a.path.style.access=true
+                -Dspark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem
+          resources:
+            requests:
+              memory: 256Mi
+              cpu: 100m
+            limits:
+              memory: 512Mi
+              cpu: 500m
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: spark-history-server
+  namespace: monitoring
+  labels:
+    app: spark-history-server
+spec:
+  selector:
+    app: spark-history-server
+  ports:
+    - name: http
+      port: 18080
+      targetPort: 18080
+      nodePort: 30180
+  type: NodePort
