@@ -30,7 +30,7 @@ Real-Time Transaction Intelligence & Fraud Detection System
 
 ## Phases
 - Phase 1: Local Environment ✅
-- Phase 2: Kubernetes Infrastructure
+- Phase 2: Kubernetes Infrastructure ✅
 - Phase 3: Spark Jobs
 - Phase 4: Deploy to Kubernetes
 - Phase 5: Observability
